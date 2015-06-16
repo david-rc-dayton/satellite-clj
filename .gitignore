@@ -1,0 +1,7 @@
+target/
+doc/
+.*
+!/.gitignore
+!/.travis.yml
+\#*#
+pom.xml
