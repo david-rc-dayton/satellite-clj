@@ -1,5 +1,4 @@
 # satellite-clj
-![Travis CI](https://travis-ci.org/david-rc-dayton/satellite-clj.svg?branch=master)
 
 *A work in progress; frequent changes to the API are likely.*
 
