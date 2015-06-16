@@ -27,7 +27,7 @@
         E (coord/rad->deg (Math/acos (/ (+ e (Math/cos v))
                                         (+ 1 (* e (Math/cos v))))))
         out [E (- 360 E)]]
-    (first (sort-by #(Math/abs (- true-anomaly %)) out))))
+    (first (sort-by #(Math/abs (- (double true-anomaly) %)) out))))
 
 (defn mean-anomaly
   [eccentricity true-anomaly]
@@ -43,7 +43,8 @@
         v (coord/deg->rad true-anomaly)
         Mi (coord/deg->rad (mean-anomaly e true-anomaly))
         n (mean-motion a)
-        TOF (/ (- (.getTime prop-date) (.getTime epoch)) 1000)
+        TOF (/ (- (.getTime ^java.util.Date prop-date)
+                  (.getTime ^java.util.Date epoch)) 1000)
         Mf (+ Mi (* n TOF))
         k (int (/ Mf (* 2 Math/PI)))]
     (coord/rad->deg (- Mf (* 2 Math/PI k)))))

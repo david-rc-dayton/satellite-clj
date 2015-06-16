@@ -1,7 +1,7 @@
 (ns satellite-clj.surface
   "Operations applicable to the Earth and other celestial bodies."
   (:require [satellite-clj.coordinates :as coord]
-            [satellite-clj.properties :as props]))
+            [satellite-clj.properties :refer [wgs84]]))
 
 ;;;; Angular Distance ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -58,19 +58,15 @@
     (adist-fn start-point end-point)))
 
 (defn distance-to-horizon
-  ([altitude]
-    (distance-to-horizon altitude :earth))
-  ([altitude body]
-    (let [r ((:mean-radius (props/body body)))]
-      (coord/rad->deg (Math/acos (/ r (+ r altitude)))))))
+  [altitude]
+  (let [r ((:r wgs84))]
+    (coord/rad->deg (Math/acos (/ r (+ r altitude))))))
 
 (defn surface-visible?
-  ([method observer ground]
-    (surface-visible? method observer ground :earth))
-  ([method observer ground body]
-    (let [adist-fn (get adist-methods method)
-          limit (distance-to-horizon observer body)]
-      (<= (adist-fn observer ground) limit))))
+  [method observer ground]
+  (let [adist-fn (get adist-methods method)
+        limit (distance-to-horizon (last observer))]
+    (<= (adist-fn observer ground) limit)))
 
 ;;;; Angular Diameter ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
