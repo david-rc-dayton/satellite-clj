@@ -1,18 +1,7 @@
 (ns satellite-clj.coordinates
   "Functions for working with coordinates and their transforms."
-  (:require [satellite-clj.properties :as props]
+  (:require [satellite-clj.properties :refer [wgs84]]
             [satellite-clj.time :as time]))
-
-(defn coord-state
-  "Merge function arguments with coordinate namepace defaults. Current
-   defaults are:
-
-     :body - :earth
-     :time - current system time"
-  [args]
-  (merge {:body :earth
-          :time (time/now)}
-         (apply hash-map args)))
 
 ;; Unit Conversion ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -151,12 +140,10 @@
     [lat wrap-lon alt]))
 
 (defn geo-radius
-  [latitude & args]
-  (let [s (coord-state args)
-        phi (deg->rad latitude)
-        body (props/body (:body s))
-        a (:semi-major-axis body)
-        b (:semi-minor-axis body)]
+  [latitude]
+  (let [phi (deg->rad latitude)
+        a (:a wgs84)
+        b (:b wgs84)]
     (Math/sqrt (/ (+ (Math/pow (* a a (Math/cos phi)) 2)
                      (Math/pow (* b b (Math/sin phi)) 2))
                   (+ (Math/pow (* a (Math/cos phi)) 2)
@@ -164,9 +151,8 @@
 
 (defn geo->ecef
   [[lat lon alt]]
-  (let [body (props/body :earth)
-        re (:semi-major-axis body)
-        e-squared (:ecc-squared body)
+  (let [re (:a wgs84)
+        e-squared (:e2 wgs84)
         phi (deg->rad lat)
         lam (deg->rad lon)
         sin-phi (Math/sin phi)
@@ -181,9 +167,8 @@
 (defn ecef->geo
   [[x y z]]
   (let [max-iter 10
-        body (props/body :earth)
-        a (:semi-major-axis body)
-        e2 (:ecc-squared body)
+        a (:a wgs84)
+        e2 (:e2 wgs84)
         lam (Math/atan2 y x)
         p (mag [x y])
         phi-c (Math/atan2 p z)
@@ -200,17 +185,15 @@
           (recur pn (inc dex)))))))
 
 (defn ecef->eci
-  [[x y z] & args]
-  (let [s (coord-state args)
-        g (time/gmst (:time s))]
+  [[x y z] date]
+  (let [g (time/gmst date)]
     [(- (* x (Math/cos g)) (* y (Math/sin g)))
      (+ (* x (Math/sin g)) (* y (Math/cos g)))
      z]))
 
 (defn eci->ecef
-  [[i j k] & args]
-  (let [s (coord-state args)
-        g (time/gmst (:time s))]
+  [[i j k] date]
+  (let [g (time/gmst date)]
     [(+ (* i (Math/cos g)) (* j (Math/sin g)))
      (+ (* i (- (Math/sin g))) (* j (Math/cos g)))
      k]))

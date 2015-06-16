@@ -1,33 +1,23 @@
 (ns satellite-clj.orbit
   "Functions for satellite orbit operations."
   (:require [satellite-clj.coordinates :as coord]
-            [satellite-clj.properties :as props]
+            [satellite-clj.properties :refer [wgs84]]
             [satellite-clj.time :as time]))
 
-(defn orbit-state
-  [args]
-  (merge {:body :earth
-          :time (time/now)}
-         (apply hash-map args)))
-
-;;;; Orbit Properties ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 (defn period
-  [semi-major-axis & args]
-  (let [s (orbit-state args)
-        a  semi-major-axis
-        mu (:mu (props/body (:body s)))]
+  [semi-major-axis]
+  (let [a semi-major-axis
+        mu (:mu wgs84)]
     (/ (* 2 Math/PI (Math/sqrt (/ (* a a a) mu))) 86400)))
 
 (defn revolutions
-  [semi-major-axis & args]
-  (/ 1 (apply (partial period semi-major-axis) args)))
+  [semi-major-axis]
+  (/ 1  (period semi-major-axis)))
 
 (defn mean-motion
-  [semi-major-axis & args]
-  (let [s (orbit-state args)
-        a semi-major-axis
-        mu (:mu (props/body (:body s)))]
+  [semi-major-axis]
+  (let [a semi-major-axis
+        mu (:mu wgs84)]
     (Math/sqrt (/ mu (* a a a)))))
 
 (defn eccentric-anomaly
@@ -47,61 +37,57 @@
     (coord/rad->deg (- E (* e (Math/sin E))))))
 
 (defn mean-anomaly-future
-  [semi-major-axis eccentricity true-anomaly epoch & args]
-  (let [s (orbit-state args)
-        a semi-major-axis
+  [semi-major-axis eccentricity true-anomaly epoch prop-date]
+  (let [a semi-major-axis
         e eccentricity
         v (coord/deg->rad true-anomaly)
         Mi (coord/deg->rad (mean-anomaly e true-anomaly))
-        n (apply (partial mean-motion a) args)
-        TOF (/ (- (.getTime (:time s)) (.getTime epoch)) 1000)
+        n (mean-motion a)
+        TOF (/ (- (.getTime prop-date) (.getTime epoch)) 1000)
         Mf (+ Mi (* n TOF))
         k (int (/ Mf (* 2 Math/PI)))]
-    (- Mf (* 2 Math/PI k))))
+    (coord/rad->deg (- Mf (* 2 Math/PI k)))))
 
 (defn eccentric-anomaly-future
-  [semi-major-axis eccentricity true-anomaly epoch & args]
-  (let [max-iter 30
+  [semi-major-axis eccentricity true-anomaly epoch prop-date]
+  (let [epsilon 1e-10
         a semi-major-axis
         e eccentricity
         v true-anomaly
-        M (apply (partial mean-anomaly-future a e v epoch) args)]
-    (loop [En M dex 0]
-      (if (> dex max-iter)
-        En
-        (recur (+ M (* e (Math/sin En))) (inc dex))))))
+        M (coord/deg->rad (mean-anomaly-future a e v epoch prop-date))]
+    (loop [Ef M]
+      (let [En (+ M (* e (Math/sin Ef)))]
+        (if (< (Math/abs (- Ef En)) epsilon)
+          (coord/rad->deg En)
+          (recur En))))))
 
 (defn true-anomaly-future
-  [semi-major-axis eccentricity true-anomaly epoch & args]
+  [semi-major-axis eccentricity true-anomaly epoch prop-date]
   (let [a semi-major-axis
         e eccentricity
         v true-anomaly
-        E (apply (partial eccentric-anomaly-future a e v epoch) args)]
+        E (coord/deg->rad (eccentric-anomaly-future a e v epoch prop-date))]
     (coord/rad->deg (Math/acos (/ (- (Math/cos E) e)
                                   (- 1 (* e (Math/cos E))))))))
 
 (defn mech-energy
-  [r v & args]
-  (let [s (orbit-state args)
-        body (props/body (:body s))
-        V-sq (Math/pow (coord/mag v) 2)
+  [r v]
+  (let [V-sq (Math/pow (coord/mag v) 2)
         R (coord/mag r)
-        mu (:mu body)]
+        mu (:mu wgs84)]
     (- (/ V-sq 2) (/ mu R))))
 
 (defn semi-major-axis
-  [r v & args]
-  (let [s (orbit-state args)
-        mu (:mu (props/body (:body s)))
-        en (apply (partial mech-energy r v) args)]
+  [r v]
+  (let [mu (:mu wgs84)
+        en (mech-energy r v)]
     (- (/ mu (* 2 en)))))
 
 (defn ecc-vector
-  [r v & args]
-  (let [s (orbit-state args)
-        V-sq (Math/pow (coord/mag v) 2)
+  [r v]
+  (let [V-sq (Math/pow (coord/mag v) 2)
         R (coord/mag r)
-        mu (:mu (props/body (:body s)))
+        mu (:mu wgs84)
         a (map * (repeat (- (/ V-sq mu) (/ 1 R))) r)
         b (map * (repeat (/ (coord/dot r v) mu)) v)]
     (map - a b)))
@@ -135,9 +121,9 @@
         (if (neg? nj) (- 360 raan) raan)))))
 
 (defn argument-of-perigee
-  [r v & args]
+  [r v]
   (let [N (node-vector r v)
-        E (apply (partial ecc-vector r v) args)
+        E (ecc-vector r v)
         n (coord/mag N)
         e (coord/mag E)
         ei (first E)
@@ -172,8 +158,8 @@
     (if (pos? vi) (- 360 tl) tl)))
 
 (defn true-anomaly
-  [r v & args]
-  (let [e-vec (apply (partial ecc-vector r v) args)
+  [r v]
+  (let [e-vec (ecc-vector r v)
         e-mag (coord/mag e-vec)
         r-mag (coord/mag r)
         r-dot-v (coord/dot r v)
@@ -189,21 +175,18 @@
               (if (neg? r-dot-v) (- 360 ta) ta)))))
 
 (defn rv->kepler
-  [r v & args]
-  (let [s (orbit-state args)]
-    {:t (:time s)
-     :a (apply (partial semi-major-axis r v) args)
-     :e (coord/mag (apply (partial ecc-vector r v) args))
-     :i (inclination r v)
-     :o (right-ascension r v)
-     :w (apply (partial argument-of-perigee r v) args)
-     :v (apply (partial true-anomaly r v) args)}))
+  [r v t]
+  {:t t
+   :a (semi-major-axis r v)
+   :e (coord/mag (ecc-vector r v))
+   :i (inclination r v)
+   :o (right-ascension r v)
+   :w (argument-of-perigee r v)
+   :v (true-anomaly r v)})
 
 (defn two-body
-  [{:keys [t a e i o w v]} & args]
-  (let [s (orbit-state args)
-        tf (:time s)
-        v-fut (true-anomaly-future a e v t :time (:time s))]
-    {:t (:time s)
+  [{:keys [t a e i o w v]} prop-date]
+  (let [v-fut (true-anomaly-future a e v t prop-date)]
+    {:t prop-date
      :a a :e e :i i :o o :w w
      :v v-fut}))
