@@ -25,9 +25,8 @@
   (let [e eccentricity
         v (coord/deg->rad true-anomaly)
         E (coord/rad->deg (Math/acos (/ (+ e (Math/cos v))
-                                        (+ 1 (* e (Math/cos v))))))
-        out [E (- 360 E)]]
-    (first (sort-by #(Math/abs (- (double true-anomaly) %)) out))))
+                                        (+ 1 (* e (Math/cos v))))))]
+    (if (< true-anomaly 180) E (- 360 E))))
 
 (defn mean-anomaly
   [eccentricity true-anomaly]
