@@ -28,8 +28,8 @@
    Example:
      (dot [1 2 3] [4 5 6]) ;=> 32
      (dot [-13.5 34.3] [89.6 -2.6]) ;=> -1298.78"
-  [vx vy]
-  (->> (interleave vx vy) (partition 2 2)
+  [a b]
+  (->> (interleave a b) (partition 2 2)
     (map #(apply * %)) (reduce +)))
 
 (defn cross
@@ -39,9 +39,9 @@
    Example:
      (cross [1 2 3] [4 5 6]) ;=> (-3 6 -3)
      (cross [1.4 -4.3 12.4] [54.2 5.1 -13.6]) ;=> (-4.759 691.12 240.2)"
-  [vx vy]
-  (let [c-fn #(- (* (nth vx %1) (nth vy %2))
-                 (* (nth vx %3) (nth vy %4)))
+  [a b]
+  (let [c-fn #(- (* (nth a %1) (nth b %2))
+                 (* (nth a %3) (nth b %4)))
         c1 [1 2 0]
         c2 [2 0 1]]
     (map c-fn c1 c2 c2 c1)))
