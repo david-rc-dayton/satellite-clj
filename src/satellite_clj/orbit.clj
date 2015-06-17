@@ -1,7 +1,8 @@
 (ns satellite-clj.orbit
   "Functions for satellite orbit operations."
   (:require [satellite-clj.math :as m]
-            [satellite-clj.properties :refer [wgs84]]))
+            [satellite-clj.properties :refer [wgs84]]
+            [satellite-clj.time :as time]))
 
 (defn period
   [semi-major-axis]
@@ -40,8 +41,7 @@
         e eccentricity
         Mi (m/deg->rad (mean-anomaly e true-anomaly))
         n (mean-motion a)
-        TOF (/ (- (.getTime ^java.util.Date prop-date)
-                  (.getTime ^java.util.Date epoch)) 1000)
+        TOF (time/delta-seconds epoch prop-date)
         Mf (+ Mi (* n TOF))
         k (int (/ Mf (* 2 Math/PI)))]
     (m/rad->deg (- Mf (* 2 Math/PI k)))))
@@ -171,12 +171,3 @@
       arg-lat? (argument-of-latitude r v)
       :else (let [ta (m/rad->deg (Math/acos (/ a b)))]
               (if (neg? r-dot-v) (- 360 ta) ta)))))
-
-;; Propagation ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn two-body
-  [{:keys [t a e i o w v]} prop-date]
-  (let [v-fut (true-anomaly-future a e v t prop-date)]
-    {:t prop-date
-     :a a :e e :i i :o o :w w
-     :v v-fut}))

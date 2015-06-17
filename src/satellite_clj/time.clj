@@ -65,3 +65,21 @@
         s (.get cal java.util.Calendar/SECOND)
         f (/ (+ (* h 3600) (* m 60) s) 86400)]
     (double (+ d f))))
+
+(defn delta-time
+  [start-date end-date k]
+  (let [ms {:seconds 1000
+            :minutes 60000
+            :hours   3600000
+            :days    86400000}
+        n (get ms k)]
+    (double (/ (- (.getTime ^java.util.Date end-date)
+                  (.getTime ^java.util.Date start-date)) n))))
+
+(defn delta-seconds
+  [start-date end-date]
+  (delta-time start-date end-date :seconds))
+
+(defn delta-days
+  [start-date end-date]
+  (delta-time start-date end-date :days))
