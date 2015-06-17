@@ -2,7 +2,7 @@
   "Clojure wrapper to the *predict4java*
    [SGP4](http://en.wikipedia.org/wiki/Simplified_perturbations_models)
    satellite ephemeris propagation library."
-  (:require [satellite-clj.coordinates :as coord])
+  (:require [satellite-clj.math :as m])
   (:import [uk.me.g4dpz.satellite SatelliteFactory TLE]))
 
 ;;;; NORAD TLE ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -74,9 +74,9 @@
 (defn raan-j2
   [{:keys [a e i]}]
   (* -2.064734896e14 (Math/pow a -3.5)
-     (Math/pow (- 1 (* e e)) -2) (Math/cos (coord/deg->rad i))))
+     (Math/pow (- 1 (* e e)) -2) (Math/cos (m/deg->rad i))))
 
 (defn perigee-j2
   [{:keys [a e i]}]
   (* 1.032367448e14 (Math/pow a -3.5) (Math/pow (- 1 (* e e)) -2)
-     (- 4 (* 5 (Math/pow (Math/sin (coord/deg->rad i)) 2)))))
+     (- 4 (* 5 (Math/pow (Math/sin (m/deg->rad i)) 2)))))

@@ -1,43 +1,44 @@
 (ns satellite-clj.surface
   "Operations applicable to the Earth and other celestial bodies."
   (:require [satellite-clj.coordinates :as coord]
+            [satellite-clj.math :as m]
             [satellite-clj.properties :refer [wgs84]]))
 
 ;;;; Angular Distance ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn adist-haversine
   [start-point end-point]
-  (let [p1 (coord/deg->rad (first start-point))
-        p2 (coord/deg->rad (first end-point))
-        l1 (coord/deg->rad (second start-point))
-        l2 (coord/deg->rad (second end-point))
+  (let [p1 (m/deg->rad (first start-point))
+        p2 (m/deg->rad (first end-point))
+        l1 (m/deg->rad (second start-point))
+        l2 (m/deg->rad (second end-point))
         delta-p (- p2 p1)
         delta-l (- l2 l1)
         a (+ (Math/pow (Math/sin (/ delta-p 2)) 2)
              (* (Math/cos p1) (Math/cos p2)
                 (Math/pow (Math/sin (/ delta-l 2)) 2)))]
-    (coord/rad->deg (* 2 (Math/atan2 (Math/sqrt a) (Math/sqrt (- 1 a)))))))
+    (m/rad->deg (* 2 (Math/atan2 (Math/sqrt a) (Math/sqrt (- 1 a)))))))
 
 (defn adist-cosine
   [start-point end-point]
-  (let [p1 (coord/deg->rad (first start-point))
-        p2 (coord/deg->rad (first end-point))
-        l1 (coord/deg->rad (second start-point))
-        l2 (coord/deg->rad (second end-point))
+  (let [p1 (m/deg->rad (first start-point))
+        p2 (m/deg->rad (first end-point))
+        l1 (m/deg->rad (second start-point))
+        l2 (m/deg->rad (second end-point))
         delta-l (- l2 l1)]
-    (coord/rad->deg
+    (m/rad->deg
       (Math/acos (+ (* (Math/sin p1) (Math/sin p2))
                     (* (Math/cos p1) (Math/cos p2) (Math/cos delta-l)))))))
 
 (defn adist-equirect
   [start-point end-point]
-  (let [p1 (coord/deg->rad (first start-point))
-        p2 (coord/deg->rad (first end-point))
-        l1 (coord/deg->rad (second start-point))
-        l2 (coord/deg->rad (second end-point))
+  (let [p1 (m/deg->rad (first start-point))
+        p2 (m/deg->rad (first end-point))
+        l1 (m/deg->rad (second start-point))
+        l2 (m/deg->rad (second end-point))
         delta-lon (- l2 l1)
         lat-m (/ (+ p2 p1) 2)
-        x (* delta-lon (Math/cos (coord/deg->rad lat-m)))
+        x (* delta-lon (Math/cos (m/deg->rad lat-m)))
         y (- p2 p1)]
     (Math/sqrt (+ (* x x) (* y y)))))
 
@@ -60,7 +61,7 @@
 (defn distance-to-horizon
   [altitude]
   (let [r ((:r wgs84))]
-    (coord/rad->deg (Math/acos (/ r (+ r altitude))))))
+    (m/rad->deg (Math/acos (/ r (+ r altitude))))))
 
 (defn surface-visible?
   [method observer ground]
@@ -78,7 +79,7 @@
    Returns the angular diameter of the sphere, relative to the observer, in
    degrees."
   [distance diameter]
-  (coord/rad->deg (* 2 (Math/asin (/ diameter (* 2 distance))))))
+  (m/rad->deg (* 2 (Math/asin (/ diameter (* 2 distance))))))
 
 (defn adiam-disc
   "Calculate the angular diameter of a disc, given the `distance` from the
@@ -88,7 +89,7 @@
    Returns the angular diameter of the disc, relative to the observer, in
    degrees."
   [distance diameter]
-  (coord/rad->deg (* 2 (Math/atan (/ diameter (* 2 distance))))))
+  (m/rad->deg (* 2 (Math/atan (/ diameter (* 2 distance))))))
 
 (def adiam-methods
   "Map associating keywords with a method of angular diameter calculation.
@@ -119,32 +120,32 @@
 
 (defn azimuth
   [earth-station satellite]
-  (let [Le (coord/deg->rad (first earth-station))
-        Ls (coord/deg->rad (first satellite))
-        le (coord/deg->rad (second earth-station))
-        ls (coord/deg->rad (second satellite))
+  (let [Le (m/deg->rad (first earth-station))
+        Ls (m/deg->rad (first satellite))
+        le (m/deg->rad (second earth-station))
+        ls (m/deg->rad (second satellite))
         ls-le (- ls le)
         y (* (Math/sin ls-le) (Math/cos Ls))
         x (- (* (Math/cos Le) (Math/sin Ls))
              (* (Math/sin Le) (Math/cos Ls) (Math/cos ls-le)))]
-    (mod (+ 360 (coord/rad->deg (Math/atan2 y x))) 360)))
+    (mod (+ 360 (m/rad->deg (Math/atan2 y x))) 360)))
 
 (defn elevation
   [earth-station satellite]
-  (let [A (coord/deg->rad (first earth-station))
-        B (coord/deg->rad (first satellite))
+  (let [A (m/deg->rad (first earth-station))
+        B (m/deg->rad (first satellite))
         Lt (- (second earth-station) (second satellite))
-        L (coord/deg->rad (cond 
+        L (m/deg->rad (cond 
                             (> Lt 180)  (- Lt 360)
                             (< Lt -180) (+ Lt 360)
                             :else Lt))
-        D (coord/rad->deg
+        D (m/rad->deg
             (Math/acos (+ (* (Math/sin A) (Math/sin B))
                           (* (Math/cos A) (Math/cos B) (Math/cos L)))))
         K (/ (+ (coord/geo-radius (first satellite)) (last satellite))
              (+ (coord/geo-radius (first earth-station)) (last earth-station)))
-        D-prime (coord/deg->rad (- 90 D))]
-    (coord/rad->deg (Math/atan (- (Math/tan D-prime)
+        D-prime (m/deg->rad (- 90 D))]
+    (m/rad->deg (Math/atan (- (Math/tan D-prime)
                                   (/ 1 (* K (Math/cos D-prime))))))))
 
 (defn distance
