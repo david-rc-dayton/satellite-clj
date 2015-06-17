@@ -49,3 +49,19 @@
   (let [d (j2000-days date)
         h (mod (+ 18.697374558 (* 24.06570982441908 d)) 24)]
     (* 2 Math/PI (/ h 24))))
+
+(defn day-of-year
+  "Calculate the number of days elapsed since the beginning of the year. Takes
+   a `java.util.Date` object for the starting time as its only argument.
+
+   Returns a floating point representation of elapsed time in the UTC timezone."
+  [date]
+  (let [cal (doto (java.util.Calendar/getInstance
+                    (java.util.TimeZone/getTimeZone "UTC"))
+              (.setTime date))
+        d (.get cal java.util.Calendar/DAY_OF_YEAR)
+        h (.get cal java.util.Calendar/HOUR_OF_DAY)
+        m (.get cal java.util.Calendar/MINUTE)
+        s (.get cal java.util.Calendar/SECOND)
+        f (/ (+ (* h 3600) (* m 60) s) 86400)]
+    (double (+ d f))))
