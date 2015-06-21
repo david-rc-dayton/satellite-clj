@@ -4,6 +4,8 @@
 
 (def grav 6.67259e-20)
 
+(def g-accel 9.80665)
+
 (def wgs84
   (let [semi-major-axis 6378.137
         inverse-flattening 298.257223563

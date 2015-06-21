@@ -1,6 +1,10 @@
 (ns satellite-clj.maneuver
   (:require [satellite-clj.math :as m]
-            [satellite-clj.properties :refer [wgs84]]))
+            [satellite-clj.properties :refer [wgs84 g-accel]]))
+
+(defn max-delta-v
+  [isp wet-mass dry-mass]
+  (* isp g-accel (Math/log (/ wet-mass dry-mass))))
 
 (defn transfer-axis
   [r1 r2]
