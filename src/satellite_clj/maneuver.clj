@@ -1,5 +1,6 @@
 (ns satellite-clj.maneuver
-  (:require [satellite-clj.properties :refer [wgs84]]))
+  (:require [satellite-clj.math :as m]
+            [satellite-clj.properties :refer [wgs84]]))
 
 (defn transfer-axis
   [r1 r2]
@@ -31,3 +32,9 @@
         dv-total (+ (Math/abs dv-1) (Math/abs dv-2))
         tof (tof-hohmann a-t)]
     {:burn [dv-1 dv-2] :delta-v dv-total :tof tof}))
+
+(defn plane-change
+  [position semi-major-axis i1 i2]
+  (let [v (velocity position semi-major-axis)
+        theta (m/deg->rad (Math/abs (- i2 i1)))]
+    (* 2 v (Math/sin (/ theta 2)))))
