@@ -17,6 +17,10 @@
         a (double semi-major-axis)]
     (Math/sqrt (* mu (- (/ 2 R) (/ 1 a))))))
 
+(defn angular-velocity
+  [position]
+  (Math/sqrt (/ (:mu wgs84) (Math/pow position 3))))
+
 (defn tof-hohmann
   [transfer-axis]
   (let [mu (:mu wgs84)
@@ -42,3 +46,14 @@
   (let [v (velocity position semi-major-axis)
         theta (m/deg->rad (Math/abs (- i2 i1)))]
     (* 2 v (Math/sin (/ theta 2)))))
+
+(defn coorbital-wait-time
+  [r1 r2 phi]
+  (let [a-t (transfer-axis r1 r2)
+        tof (tof-hohmann a-t)
+        w-i (angular-velocity r1)
+        w-t (angular-velocity r2)
+        a-lead (* w-t tof)
+        phi-initial (m/deg->rad phi)
+        phi-final (- Math/PI a-lead)]
+    (/ (- phi-final phi-initial) (- w-t w-i))))
