@@ -1,5 +1,5 @@
 (ns satellite-clj.math
-  "Math functions for vector, trigonometry, and quaternion operations.")
+  "Math functions for vector, matrix, trigonometry, and quaternion operations.")
 
 ;; Unit Conversion ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -27,8 +27,7 @@
      (dot [1 2 3] [4 5 6]) ;=> 32
      (dot [-13.5 34.3] [89.6 -2.6]) ;=> -1298.78"
   [a b]
-  (->> (interleave a b) (partition 2 2)
-    (map #(apply * %)) (reduce +)))
+  (reduce + (map * a b)))
 
 (defn cross
   "Calculate and return the cross product of two vectors. Takes two 3x1 vectors
@@ -45,7 +44,7 @@
     (map c-fn c1 c2 c2 c1)))
 
 (defn mag
-  "Calculate the magnitude for a vector. Takes a 1D vector as its only argument.
+  "Calculate the magnitude for a vector. Takes a vector as its only argument.
 
    Example:
      (mag [1 2 3 4 5]) ;=> 7.416198487095663
@@ -54,7 +53,7 @@
   (Math/sqrt (reduce + (map #(* % %) v))))
 
 (defn norm
-  "Calculate and return the normalized input vector. Takes a 1D vector as its
+  "Calculate and return the normalized input vector. Takes a vector as its
    only argument.
 
    Example:
@@ -66,7 +65,7 @@
 
 (defn hyp
   "Calcluate and return the length of the hypotenuse formed by the combining
-   two vectors. Takes two 1D vectors as arguments.
+   two vectors. Takes two vectors as arguments.
 
    Example:
      (hyp [3 0 0] [0 4 0]) ;=> 5.0
@@ -76,7 +75,7 @@
 
 (defn angle
   "Returns the angle and its conjugate between two vectors, in degrees. Takes
-   two 1D vectors as arguments.
+   two vectors as arguments.
 
    Example:
      (angle [1 0 0] [0 1 0]) ;=> [90.0 270.0]
@@ -109,9 +108,64 @@
           z (* (Math/cos alpha) r-prime)]
       [x y z])))
 
+(defn dist
+  "Calculate the Euclidean Distance between two points. Takes two vectors as
+   arguments.
+
+   Example:
+     (dist [1 0] [0 1]) ;=> 1.4142135623730951
+     (dist [1 2 3] [4 5 6]) ;=> 5.196152422706632"
+  [a b]
+  (let [diffs (map #(- %1 %2) a b)]
+    (Math/sqrt (reduce + (map #(* % %) diffs)))))
+
+;;;; Matrix Ops ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn cholesky
+  "Decompose a matrix into the product of a lower triangular matrix and its
+   conjugate transpose. Takes a square matrix as its only argument.
+
+   Example:
+     (cholesky [[25 0 0] [0 25 0] [0 0 25]])
+       ;=> [[5.0 0.0 0.0] [0.0 5.0 0.0] [0.0 0.0 5.0]]"
+  [matrix]
+  (let [n (count matrix)
+        A (to-array-2d matrix)
+        L (make-array Double/TYPE n n)]
+    (doseq [i (range n) j (range (inc i))]
+      (let [s (reduce + (for [k (range j)] (* (aget L i k) (aget L j k))))]
+        (aset L i j (if (= i j)
+                      (Math/sqrt (- (aget A i i) s))
+                      (* (/ 1.0 (aget L j j)) (- (aget A i j) s))))))
+    (vec (map vec L))))
+
+(defn ms-mult
+  "Multiply a matrix by a scalar value.
+
+   Example:
+     (ms-mult [[1 2 3] [0 1 0] [9 8 7]] 2) ;=> ((2 4 6) (0 2 0) (18 16 14))"
+  [m s]
+  (for [row m]
+    (map (partial * s) row)))
+
+(defn mv-mult
+  "Multiply a matrix by a vector. Identical to computing the dot product of each
+   row in the matrix and the vector argument.
+
+   Example:
+     (mv-mult [[1 0 1] [0 1 0] [0 0 1]] [2 4 6]) ;=> (8 4 6)"
+  [m v]
+  (for [row m]
+    (dot row v)))
+
 ;;;; Quaternion Ops ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn q-product
+  "Calculate the product of two quaternions, starting with the real component,
+   denoted by a vector of the form [1 i j k].
+
+   Example:
+     (q-product [1 2 3 4] [4 3 2 1]) ;=> (-12 6 24 12)"
   [p q]
   (let [dp (dot (rest p) (rest q))
         cp (cross (rest p) (rest q))
@@ -122,6 +176,11 @@
     (conj sum st)))
 
 (defn q-conjugate
+  "Calculate the conjugate of a quaternion, starting with the real component,
+   denoted by a vector of the form [1 i j k].
+
+   Example:
+     (q-conjugate [1 2 3 4]) ;=> (1 -2 -3 -4)"
   [q]
   (let [st (first q)
         en (map #(* -1 %) (rest q))]
