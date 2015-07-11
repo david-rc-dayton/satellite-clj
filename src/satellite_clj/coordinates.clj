@@ -108,6 +108,14 @@
      z]))
 
 (defn eci->ecef
+  "Convert Earth Centered Inertial (ECI) coordinates to Earth Centered Earth
+   Fixed (ECEF) coordinates, in kilometers for a given date.
+
+   Example:
+     (def test-time #inst \"2012-12-21T00:00:00.000-00:00\")
+
+     (eci->ecef [0 6378.137 0] test-time)
+       ;=> [6378.082623104259 -26.337114961469073 0]"
   [[i j k] date]
   (let [g (time/gmst date)]
     [(+ (* i (Math/cos g)) (* j (Math/sin g)))
@@ -115,6 +123,31 @@
      k]))
 
 (defn rv->kepler
+  "Convert position and velocity vectors in Earth Centered Inertial (ECI)
+   coordinates, in kilometers and kilometers per second, to Classical Keplerian
+   Elements, for a given time. Returns a hash-map containing the following:
+
+     :t - time at epoch (java.util.Date)
+     :a - semi-major-axis (km)
+     :e - eccentricity
+     :i - inclination (degrees)
+     :o - right ascension of the ascending node (degrees)
+     :w - argument of perigee (degrees)
+     :v - true anomaly (degrees)
+
+   Example:
+     (def eci-position [8228 389 6888])
+     (def eci-velocity [-0.7 6.6 -0.6])
+     (def test-time #inst \"1999-09-09T15:30:00.000-00:00\")
+
+     (rv->kepler eci-position eci-velocity test-time)
+     ;=> {:t #inst \"1999-09-09T15:30:00.000-00:00\",
+     ;    :a 13360.642755150553,
+     ;    :e 0.22049791761487267,
+     ;    :i 39.93754927254844,
+     ;    :o 269.85555147445865,
+     ;    :w 125.72438209646339,
+     ;    :v 326.46253404643056}"
   [r v t]
   {:t t
    :a (orbit/semi-major-axis r v)
