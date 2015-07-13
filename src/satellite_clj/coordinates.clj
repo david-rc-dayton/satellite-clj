@@ -208,3 +208,18 @@
         vy (* (/ (* a a n) r) (Math/sqrt (- 1 (* e e))) (Math/cos E))
         v-vec (->> (m/rot :z w [vx vy 0]) (m/rot :x i) (m/rot :z o))]
     [:rv {:r r-vec :v v-vec} t]))
+
+(defn kepler->tle
+  [[frame {:keys [a e i o w v]} t] & args]
+  (let [defs {:name "SATELLITE" :number 0 :classification "U"
+              :launch-year 0 :launch-number 0 :launch-piece "A"
+              :first-time -0.0 :bstar 0.0 :elset 0 :revs 0}
+        args (merge defs args)
+        title-line (format "%-24s" (:name args))
+        sat-num (format "%05d%1s" (:number args) (:classification args))
+        desig (format "%02d%03d%-3s"(:launch-year args) (:launch-number args)
+                      (:launch-piece args))
+        time-deriv (format "%10f" (:first-time args))
+        line-one (str "1 " sat-num " " desig " " (time/date-tle t) " "
+                      time-deriv "  00000-0 ")]
+    [title-line line-one]))

@@ -31,6 +31,31 @@
                (.setTimeZone (java.util.TimeZone/getTimeZone "UTC")))]
       (.format sd date))))
 
+(defn date-tle
+  [date]
+  (let [ysp (doto (java.text.SimpleDateFormat. "yy")
+               (.setTimeZone (java.util.TimeZone/getTimeZone "UTC")))
+        dsp (doto (java.text.SimpleDateFormat. "DDD")
+              (.setTimeZone (java.util.TimeZone/getTimeZone "UTC")))
+        hsp (doto (java.text.SimpleDateFormat. "HH")
+              (.setTimeZone (java.util.TimeZone/getTimeZone "UTC")))
+        msp (doto (java.text.SimpleDateFormat. "mm")
+                 (.setTimeZone (java.util.TimeZone/getTimeZone "UTC")))
+        ssp (doto (java.text.SimpleDateFormat. "ss")
+                 (.setTimeZone (java.util.TimeZone/getTimeZone "UTC")))
+        milsp (doto (java.text.SimpleDateFormat. "SS")
+                (.setTimeZone (java.util.TimeZone/getTimeZone "UTC")))
+        year (.format ysp date)
+        day (Integer/parseInt (.format dsp date))
+        hour (Integer/parseInt (.format hsp date))
+        minute (Integer/parseInt (.format msp date))
+        second (Integer/parseInt (.format ssp date))
+        millisecond (Integer/parseInt (.format milsp date))
+        frac (double (+ day (/ hour 24) (/ minute 1440)
+                        (/ second 86400) (/ millisecond 86400000)))
+        frac-fit (apply str (take 12 (seq (str frac))))]
+    (format "%2s%12s" year frac-fit)))
+
 ;;;; Epoch ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn millis->days
