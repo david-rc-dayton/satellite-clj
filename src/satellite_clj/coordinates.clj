@@ -158,16 +158,14 @@
      ;    :v 326.46253404643056}"
   [[frame {:keys [r v]} t]]
   {:pre [(= frame :rv)]}
-  (let [r (second r)
-        v (second v)]
-    [:kepler
-     {:a (orbit/semi-major-axis r v)
-      :e (m/mag (orbit/ecc-vector r v))
-      :i (orbit/inclination r v)
-      :o (orbit/right-ascension r v)
-      :w (orbit/argument-of-perigee r v)
-      :v (orbit/true-anomaly r v)}
-     t]))
+  [:kepler
+   {:a (orbit/semi-major-axis r v)
+    :e (m/mag (orbit/ecc-vector r v))
+    :i (orbit/inclination r v)
+    :o (orbit/right-ascension r v)
+    :w (orbit/argument-of-perigee r v)
+    :v (orbit/true-anomaly r v)}
+   t])
 
 (defn kepler->rv
   "Convert Classical Keplerian Elements to position and velocity vectors. Takes
