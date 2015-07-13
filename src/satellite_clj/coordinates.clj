@@ -158,6 +158,32 @@
    :v (orbit/true-anomaly r v)})
 
 (defn kepler->rv
+  "Convert Classical Keplerian Elements to position and velocity vectors. Takes
+   a hash-map containing the keys:
+
+     :t - time at epoch (java.util.Date)
+     :a - semi-major-axis (km)
+     :e - eccentricity
+     :i - inclination (degrees)
+     :o - right ascension of the ascending node (degrees)
+     :w - argument of perigee (degrees)
+     :v - true anomaly (degrees)
+
+   Returns a list containing the position vector, in kilometers, the
+   velocity vector, in kilometers per second, and the time at epoch.
+
+   Example:
+     (def kep {:t #inst \"2015-07-13T19:09:21.062-00:00\",
+               :a 8788.081767279667,
+               :e 0.17121118195416893,
+               :i 153.2492285182475,
+               :o 255.27928533439618,
+               :w 20.068139973005337,
+               :v 28.44580498419213})
+     (kepler->rv kep)
+       ;=> [(-6045.0 -3490.0000000000023 2499.999999999997)
+       ;    (-3.4570000000000025 6.6179999999999986 2.5329999999999977)
+       ;    #inst \"2015-07-13T19:09:21.062-00:00\"]"
   [{:keys [t a e i o w v]}]
   (let [mu (:mu wgs84)
         E (Math/atan (/ (* (Math/sqrt (- 1 (* e e))) (Math/sin (m/deg->rad v)))
@@ -170,4 +196,4 @@
         vx (* (- (/ (* a a n) r)) (Math/sin E))
         vy (* (/ (* a a n) r) (Math/sqrt (- 1 (* e e))) (Math/cos E))
         v-vec (->> (m/rot :z w [vx vy 0]) (m/rot :x i) (m/rot :z o))]
-    [:rv [r-vec v-vec t]]))
+    [r-vec v-vec t]))

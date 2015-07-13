@@ -120,8 +120,12 @@
     (Math/sqrt (reduce + (map #(* % %) diffs)))))
 
 (defn rot
-  "Rotate a vector. Takes the rotation axis [:x, :y, :z] and the rotation amount
-   in degrees."
+  "Rotate a vector. Takes the rotation axis [:x, :y, :z], the rotation amount
+   in degrees, and the vector to be transformed as arguments.
+
+   Example:
+     (rot :z 90 [1 0 0])
+       ;=> (6.123233995736766E-17 1.0 0)"
   [axis theta vctr]
   (let [t (deg->rad theta)
         rot-matrix (condp = axis
