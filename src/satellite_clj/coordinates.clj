@@ -19,15 +19,15 @@
     (neg? longitude)  (+ longitude 360)
     :else longitude))
 
-(defn geo-radius
+(defn geodetic-radius
   "Calculate the distance from the surface of the Earth, to the Earth's center
    for a given latitude. Based on the WGS84 reference ellipsoid; result is
    in kilometers.
 
    Example:
-     (geo-radius 0) ;=> 6378.137
-     (geo-radius -45) ;=> 6367.489543863465
-     (geo-radius 90) ;=> 6356.752314245179"
+     (geodetic-radius 0) ;=> 6378.137
+     (geodetic-radius -45) ;=> 6367.489543863465
+     (geodetic-radius 90) ;=> 6356.752314245179"
   [latitude]
   (let [phi (m/deg->rad latitude)
         a (:a wgs84)
@@ -37,18 +37,19 @@
                   (+ (Math/pow (* a (Math/cos phi)) 2)
                      (Math/pow (* b (Math/sin phi)) 2))))))
 
-(defn geo->ecef
+(defn geodetic->ecef
   "Convert geodetic coordinates to Earth Centered Earth Fixed (ECEF) coordinates
    in kilometers. Takes a vector containing the latitude, longitude, and
    altitude of a point in degrees and kilometers. Returns the X, Y, and Z
    components as a position vector.
 
    Example:
-     (geo->ecef [10 20 2])
+     (geodetic->ecef [10 20 2])
        ;=> [5904.880375850656 2149.2006937122637 1100.5958440906952]
-     (geo->ecef [-45 85 402])
+     (geodetic->ecef [-45 85 402])
        ;=> [418.50861199604446 4783.575324270843 -4771.605334902912]"
-  [[lat lon alt]]
+  [[frame [lat lon alt]]]
+  {:pre [(= frame :geodetic)]}
   (let [re (:a wgs84)
         e-squared (:e2 wgs84)
         phi (m/deg->rad lat)
@@ -58,11 +59,12 @@
         sin-lam (Math/sin lam)
         cos-lam (Math/cos lam)
         n (/ re (Math/sqrt (- 1 (* e-squared (Math/pow sin-phi 2)))))]
-    [(* (+ n alt) cos-phi cos-lam)
-     (* (+ n alt) cos-phi sin-lam)
-     (* (+ (* n (- 1 e-squared)) alt) sin-phi)]))
+    [:ecef
+     [(* (+ n alt) cos-phi cos-lam)
+      (* (+ n alt) cos-phi sin-lam)
+      (* (+ (* n (- 1 e-squared)) alt) sin-phi)]]))
 
-(defn ecef->geo
+(defn ecef->geodetic
   "Convert Earth Centered Earth Fixed (ECEF) coordinates to geodetic
    coordinates. Takes a vector containing the X, Y, and Z components of a
    point's position relative to the Earth's center, and returns the latitude,
@@ -73,7 +75,8 @@
        ;=> [48.14737988893906 -20.210269215157226 3783.4768939372952]
      (ecef->geo [1389.426 -4631.199 4145.635])
        ;=> [40.799999018658866 -73.3000032521367 -4.937954572596936E-4]"
-  [[x y z]]
+  [[frame [x y z]]]
+  {:pre [(= frame :ecef)]}
   (let [max-iter 10
         a (:a wgs84)
         e2 (:e2 wgs84)
@@ -83,8 +86,10 @@
         rn-fn #(/ a (Math/sqrt (- 1 (* e2 (Math/sin %) (Math/sin %)))))]
     (loop [phi-n phi-c dex 0]
       (if (> dex max-iter)
-        [(m/rad->deg phi-n) (m/rad->deg lam) 
-         (- (/ p (Math/cos phi-n)) (rn-fn phi-n))]
+        [:geodetic
+         [(m/rad->deg phi-n)
+          (m/rad->deg lam)
+          (- (/ p (Math/cos phi-n)) (rn-fn phi-n))]]
         (let [Rn (rn-fn phi-n) 
               h (- (/ p (Math/cos phi-n)) Rn)
               pn (Math/atan
@@ -101,8 +106,9 @@
 
      (ecef->eci [6378.137 0 0] test-time)
        ;=> [6354.52258010092 548.33782448099 0]"
-  [[x y z] date]
-  (let [g (time/gmst date)]
+  [[frame [x y z] t]]
+  {:pre [(= frame :ecef)]}
+  (let [g (time/gmst t)]
     [(- (* x (Math/cos g)) (* y (Math/sin g)))
      (+ (* x (Math/sin g)) (* y (Math/cos g)))
      z]))
@@ -116,11 +122,13 @@
 
      (eci->ecef [0 6378.137 0] test-time)
        ;=> [6378.082623104259 -26.337114961469073 0]"
-  [[i j k] date]
-  (let [g (time/gmst date)]
-    [(+ (* i (Math/cos g)) (* j (Math/sin g)))
-     (+ (* i (- (Math/sin g))) (* j (Math/cos g)))
-     k]))
+  [[frame [i j k] t]]
+  {:pre [(= frame :eci)]}
+  (let [g (time/gmst t)]
+    [:ecef
+     [(+ (* i (Math/cos g)) (* j (Math/sin g)))
+      (+ (* i (- (Math/sin g))) (* j (Math/cos g)))
+      k]]))
 
 (defn rv->kepler
   "Convert position and velocity vectors in Earth Centered Inertial (ECI)
@@ -148,14 +156,18 @@
      ;    :o 269.85555147445865,
      ;    :w 125.72438209646339,
      ;    :v 326.46253404643056}"
-  [r v t]
-  {:t t
-   :a (orbit/semi-major-axis r v)
-   :e (m/mag (orbit/ecc-vector r v))
-   :i (orbit/inclination r v)
-   :o (orbit/right-ascension r v)
-   :w (orbit/argument-of-perigee r v)
-   :v (orbit/true-anomaly r v)})
+  [[frame {:keys [r v]} t]]
+  {:pre [(= frame :rv)]}
+  (let [r (second r)
+        v (second v)]
+    [:kepler
+     {:a (orbit/semi-major-axis r v)
+      :e (m/mag (orbit/ecc-vector r v))
+      :i (orbit/inclination r v)
+      :o (orbit/right-ascension r v)
+      :w (orbit/argument-of-perigee r v)
+      :v (orbit/true-anomaly r v)}
+     t]))
 
 (defn kepler->rv
   "Convert Classical Keplerian Elements to position and velocity vectors. Takes
@@ -184,7 +196,8 @@
        ;=> [(-6045.0 -3490.0000000000023 2499.999999999997)
        ;    (-3.4570000000000025 6.6179999999999986 2.5329999999999977)
        ;    #inst \"2015-07-13T19:09:21.062-00:00\"]"
-  [{:keys [t a e i o w v]}]
+  [[frame {:keys [a e i o w v]} t]]
+  {:pre [(= frame :kepler)]}
   (let [mu (:mu wgs84)
         E (Math/atan (/ (* (Math/sqrt (- 1 (* e e))) (Math/sin (m/deg->rad v)))
                         (+ e (Math/cos (m/deg->rad v)))))
@@ -196,4 +209,4 @@
         vx (* (- (/ (* a a n) r)) (Math/sin E))
         vy (* (/ (* a a n) r) (Math/sqrt (- 1 (* e e))) (Math/cos E))
         v-vec (->> (m/rot :z w [vx vy 0]) (m/rot :x i) (m/rot :z o))]
-    [r-vec v-vec t]))
+    [:rv {:r r-vec :v v-vec} t]))

@@ -83,3 +83,9 @@
 (defn delta-days
   [start-date end-date]
   (delta-time start-date end-date :days))
+
+(defn append-time
+  [coll]
+  (if (= (class (last coll)) java.util.Date)
+    coll
+    (conj (vec coll) (now))))
