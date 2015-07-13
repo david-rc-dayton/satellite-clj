@@ -156,3 +156,18 @@
    :o (orbit/right-ascension r v)
    :w (orbit/argument-of-perigee r v)
    :v (orbit/true-anomaly r v)})
+
+(defn kepler->rv
+  [{:keys [t a e i o w v]}]
+  (let [mu (:mu wgs84)
+        E (Math/atan (/ (* (Math/sqrt (- 1 (* e e))) (Math/sin (m/deg->rad v)))
+                        (+ e (Math/cos (m/deg->rad v)))))
+        x (- (* a (Math/cos E)) (* a e))
+        y (* a (Math/sin E) (Math/sqrt (- 1 (* e e))))
+        r (m/mag [x y])
+        n (orbit/mean-motion a)
+        r-vec (->> (m/rot :z w [x y 0]) (m/rot :x i) (m/rot :z o))
+        vx (* (- (/ (* a a n) r)) (Math/sin E))
+        vy (* (/ (* a a n) r) (Math/sqrt (- 1 (* e e))) (Math/cos E))
+        v-vec (->> (m/rot :z w [vx vy 0]) (m/rot :x i) (m/rot :z o))]
+    [:rv [r-vec v-vec t]]))

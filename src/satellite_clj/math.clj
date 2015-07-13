@@ -119,6 +119,23 @@
   (let [diffs (map #(- %1 %2) a b)]
     (Math/sqrt (reduce + (map #(* % %) diffs)))))
 
+(defn rot
+  "Rotate a vector. Takes the rotation axis [:x, :y, :z] and the rotation amount
+   in degrees."
+  [axis theta vctr]
+  (let [t (deg->rad theta)
+        rot-matrix (condp = axis
+                     :x [[1 0            0               ]
+                         [0 (Math/cos t) (- (Math/sin t))]
+                         [0 (Math/sin t) (Math/cos t)    ]]
+                     :y [[(Math/cos t)     0 (Math/sin t)]
+                         [0                1 0           ]
+                         [(- (Math/sin t)) 0 (Math/cos t)]]
+                     :z [[(Math/cos t) (- (Math/sin t)) 0]
+                         [(Math/sin t) (Math/cos t)     0]
+                         [0            0                1]])]
+    (map #(dot % vctr) rot-matrix)))
+
 ;;;; Matrix Ops ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn cholesky
