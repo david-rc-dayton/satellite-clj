@@ -160,6 +160,16 @@
                       (* (/ 1.0 (aget L j j)) (- (aget A i j) s))))))
     (vec (map vec L))))
 
+(defn norm-matrix
+  "Normalize a matrix to values between 0 and 1.
+
+   Example:
+     (norm-matrix [[5 10 5] [10 0 5]])
+     ;=> [[0.5 1.0 0.5] [1.0 0.0 0.5]]"
+  [m]
+  (let [max-m (reduce max (map #(reduce max %) m))]
+    (vec (map vec (for [row m] (map #(double (/ % max-m)) row))))))
+
 (defn ms-mult
   "Multiply a matrix by a scalar value.
 

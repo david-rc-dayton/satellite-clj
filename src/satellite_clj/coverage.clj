@@ -97,20 +97,22 @@
   [res coords]
   (let [y (int res)
         x (int (* 2 res))
-        m (blank-matrix y x)
-        vfns (map #(apply view-fn %) coords)
-        pm (/ Math/PI (- y))
-        ps (/ Math/PI 2)
-        lm (/ (* 2 Math/PI) x)
-        ls Math/PI
-        p-scale #(+ (* % pm) ps)
-        l-scale #(- (* % lm) ls)]
-    (doseq [yc (range 0 y) xc (range 0 x)]
-      (let [p (p-scale yc)
-            l (l-scale xc)
-            v (reduce + (map #(% p l) vfns))]
-        (aset-int m yc xc v)))
-    (vec (map vec m))))
+        m (blank-matrix y x)]
+    (if (seq coords)
+      (let [vfns (map #(apply view-fn %) coords)
+            pm (/ Math/PI (- y))
+            ps (/ Math/PI 2)
+            lm (/ (* 2 Math/PI) x)
+            ls Math/PI
+            p-scale #(+ (* % pm) ps)
+            l-scale #(- (* % lm) ls)]
+        (doseq [yc (range 0 y) xc (range 0 x)]
+          (let [p (p-scale yc)
+                l (l-scale xc)
+                v (reduce + (map #(% p l) vfns))]
+            (aset-int m yc xc v)))
+        (vec (map vec m)))
+      (vec (map vec m)))))
 
 (defn print-matrix
   "Print a coverage matrix to STDOUT; useful for debugging.

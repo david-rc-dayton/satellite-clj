@@ -42,7 +42,8 @@
 
      (collision-probability
        relative-position asset-covariance satellite-covariance
-       combined-radius 1 250000)  ;=> 1.08E-4"
+       combined-radius 1 250000)
+     ;=> 1.08E-4"
   [rel-position cov-asset cov-satellite hbr sigma samples]
   (let [n (count (first cov-asset))
         m1 (m/cholesky (m/ms-mult cov-asset sigma))
