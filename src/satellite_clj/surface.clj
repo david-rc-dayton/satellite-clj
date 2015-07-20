@@ -142,16 +142,18 @@
         D (m/rad->deg
             (Math/acos (+ (* (Math/sin A) (Math/sin B))
                           (* (Math/cos A) (Math/cos B) (Math/cos L)))))
-        K (/ (+ (coord/geo-radius (first satellite)) (last satellite))
-             (+ (coord/geo-radius (first earth-station)) (last earth-station)))
+        K (/ (+ (coord/geodetic-radius
+                  (first satellite)) (last satellite))
+             (+ (coord/geodetic-radius
+                  (first earth-station)) (last earth-station)))
         D-prime (m/deg->rad (- 90 D))]
     (m/rad->deg (Math/atan (- (Math/tan D-prime)
                                   (/ 1 (* K (Math/cos D-prime))))))))
 
 (defn distance
   [earth-station satellite]
-  (let [es (coord/geo->ecef earth-station)
-        sat (coord/geo->ecef satellite)
+  (let [es (coord/geodetic->ecef earth-station)
+        sat (coord/geodetic->ecef satellite)
         x-delta (Math/pow (- (first es) (first sat)) 2)
         y-delta (Math/pow (- (second es) (second sat)) 2)
         z-delta (Math/pow (- (last es) (last sat)) 2)]
