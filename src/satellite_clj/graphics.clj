@@ -93,7 +93,7 @@
     (jpanel draw-fn props-atom image-atom)))
 
 (defn show-panel!
-  [[panel props image & opts]]
+  [[panel props image] & opts]
   (let [defaults {:title "satellite-clj" :width 1000 :height 500 :on-top? false}
         properties (merge defaults (apply hash-map opts))]
     (doto (javax.swing.JFrame.)
