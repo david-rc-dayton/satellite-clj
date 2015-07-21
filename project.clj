@@ -6,6 +6,5 @@
             :distribution :repo}
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [uk.me.g4dpz/predict4java "1.1.3"]]
-  :profiles {:repl {:aot :all}}
   :scm {:name "git"
          :url "https://github.com/david-rc-dayton/satellite-clj"})

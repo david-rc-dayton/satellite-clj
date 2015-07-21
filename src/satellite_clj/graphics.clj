@@ -24,7 +24,7 @@
         a (double a)
         c (* v s)
         h-prime (/ h 60)
-        x (* c (- 1 (Math/abs (dec (mod h-prime 2)))))
+        x (* c (- 1 (Math/abs (double (dec (mod h-prime 2))))))
         rgb (cond
               (and (<= 0 h-prime) (< h-prime 1)) [c x 0]
               (and (<= 1 h-prime) (< h-prime 2)) [x c 0]
@@ -32,20 +32,30 @@
               (and (<= 3 h-prime) (< h-prime 4)) [0 x c]
               (and (<= 4 h-prime) (< h-prime 5)) [x 0 c]
               (and (<= 5 h-prime) (< h-prime 6)) [c 0 x]
-              :else                              [0 0 0])
-        rgba (vec (map float (conj rgb a)))]
-    (java.awt.Color. (nth rgba 0) (nth rgba 1) (nth rgba 2) (nth rgba 3))))
+              :else                              [0 0 0])]
+    (java.awt.Color. (float (nth rgb 0))
+                     (float (nth rgb 1))
+                     (float (nth rgb 2)) a)))
 
 (defn val->rgba
   [a x]
-  (.getRGB (hsva->rgba (* x 240) 1 1 a)))
+  (.getRGB ^java.awt.Color (hsva->rgba (* x 240) 1 1 a)))
 
 ;; JPanel  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn merge-images
   "Scale and merge images onto a given canvas"
   [graphics width height images]
-  (doseq [img images] (.drawImage graphics img 0 0 width height nil nil)))
+  (doseq [img images]
+    (.drawImage ^java.awt.Graphics2D graphics img 0 0 width height nil nil)))
+
+(defn update-panel
+  "Update a panel's properties with new arguments."
+  [[panel props-atom image-atom] & args]
+  (let [panel ^javax.swing.JPanel panel]
+    (swap! props-atom merge (apply hash-map args))
+    (reset! image-atom nil)
+    (.repaint panel 0 0 (.getWidth panel) (.getHeight panel))))
 
 ;; Coverage ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -69,6 +79,7 @@
         cov-img (coverage-image (:image properties))]
     (when (nil? @image-atom)
       (reset! image-atom (coverage-overlay graphics width height properties)))
+    (.clearRect ^java.awt.Graphics2D graphics 0 0 width height)
     (merge-images graphics width height [cov-img @image-atom])))
 
 ;; Panels ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -95,13 +106,14 @@
 (defn show-panel!
   [[panel props image] & opts]
   (let [defaults {:title "satellite-clj" :width 1000 :height 500 :on-top? false}
-        properties (merge defaults (apply hash-map opts))]
-    (doto (javax.swing.JFrame.)
-      (.setDefaultCloseOperation javax.swing.JFrame/DISPOSE_ON_CLOSE)
-      (.setTitle (:title properties))
-      (.setAlwaysOnTop (:on-top? properties))
-      (.setSize (:width properties) (:height properties))
-      (.setContentPane panel) (.setLocationRelativeTo nil) .show)))
+        properties (merge defaults (apply hash-map opts))
+        frame (doto (javax.swing.JFrame.)
+                (.setDefaultCloseOperation javax.swing.JFrame/DISPOSE_ON_CLOSE)
+                (.setTitle (:title properties))
+                (.setAlwaysOnTop (:on-top? properties))
+                (.setSize (:width properties) (:height properties))
+                (.setContentPane panel) (.setLocationRelativeTo nil))]
+    (javax.swing.SwingUtilities/invokeLater #(.show frame))))
 
 ;; DEBUG ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
