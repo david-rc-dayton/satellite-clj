@@ -5,8 +5,7 @@
 ;; Images ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def images
-  {:terrain "equirect_terrain.png"
-   :light   "equirect_light.png"
+  {:light   "equirect_light.png"
    :dark    "equirect_dark.png"})
 
 (defn coverage-image
@@ -49,7 +48,7 @@
   (doseq [img images]
     (.drawImage ^java.awt.Graphics2D graphics img 0 0 width height nil nil)))
 
-(defn update-panel
+(defn update-panel!
   "Update a panel's properties with new arguments."
   [[panel props-atom image-atom] & args]
   (let [panel ^javax.swing.JPanel panel]
@@ -74,7 +73,7 @@
 
 (defn draw-coverage
   [graphics width height props-atom image-atom]
-  (let [defaults {:alpha 0.6 :locations [] :resolution 180 :image :dark}
+  (let [defaults {:alpha 0.6 :locations [] :resolution 180 :image :light}
         properties (merge defaults @props-atom)
         cov-img (coverage-image (:image properties))]
     (when (nil? @image-atom)
@@ -90,6 +89,22 @@
                 (paint [^java.awt.Graphics2D graphics]
                   (let [width (proxy-super getWidth)
                         height (proxy-super getHeight)]
+                    (doto graphics
+                      (.setRenderingHint
+                        java.awt.RenderingHints/KEY_INTERPOLATION
+                        java.awt.RenderingHints/VALUE_INTERPOLATION_BICUBIC)
+                      (.setRenderingHint
+                        java.awt.RenderingHints/KEY_RENDERING
+                        java.awt.RenderingHints/VALUE_RENDER_QUALITY)
+                      (.setRenderingHint
+                        java.awt.RenderingHints/KEY_COLOR_RENDERING
+                        java.awt.RenderingHints/VALUE_COLOR_RENDER_QUALITY)
+                      (.setRenderingHint
+                        java.awt.RenderingHints/KEY_STROKE_CONTROL
+                        java.awt.RenderingHints/VALUE_STROKE_PURE)
+                      (.setRenderingHint
+                        java.awt.RenderingHints/KEY_ANTIALIASING
+                        java.awt.RenderingHints/VALUE_ANTIALIAS_ON))
                     (draw-fn graphics width height props-atom image-atom))))]
     [panel props-atom image-atom]))
 
