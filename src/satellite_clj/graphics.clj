@@ -38,38 +38,49 @@
 
 (defn val->rgba
   [a x]
-  (hsva->rgba (* x 240) 1 1 a))
+  (.getRGB (hsva->rgba (* x 240) 1 1 a)))
 
-;; Draw Functions ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; JPanel  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn draw-coverage
-  [graphics width height props-atom]
-  (let [defaults {:alpha 0.6 :locations [] :resolution 90 :image :dark}
-        properties (merge defaults @props-atom)
-        res (:resolution properties)
+(defn merge-images
+  "Scale and merge images onto a given canvas"
+  [graphics width height images]
+  (doseq [img images] (.drawImage graphics img 0 0 width height nil nil)))
+
+;; Coverage ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn coverage-overlay
+  "Update overlay image for coverage panel."
+  [graphics width height properties]
+  (let [res (:resolution properties)
         locs (:locations properties)
         alpha (:alpha properties)
-        cov-img (coverage-image (:image properties))
         ovr-img (java.awt.image.BufferedImage.
                   (* 2 res) res java.awt.image.BufferedImage/TYPE_4BYTE_ABGR)
         c-mat (norm-matrix (coverage-matrix res locs))]
-    (.drawImage graphics
-      cov-img 0 0 width height nil nil)
     (doseq [y (range (count c-mat)) x (range (count (first c-mat)))]
-      (.setRGB ovr-img x y (.getRGB (val->rgba alpha (get-in c-mat [y x])))))
-    (.drawImage graphics
-      ovr-img 0 0 width height nil nil)))
+      (.setRGB ovr-img x y (val->rgba alpha (get-in c-mat [y x]))))
+    ovr-img))
+
+(defn draw-coverage
+  [graphics width height props-atom image-atom]
+  (let [defaults {:alpha 0.6 :locations [] :resolution 180 :image :dark}
+        properties (merge defaults @props-atom)
+        cov-img (coverage-image (:image properties))]
+    (when (nil? @image-atom)
+      (reset! image-atom (coverage-overlay graphics width height properties)))
+    (merge-images graphics width height [cov-img @image-atom])))
 
 ;; Panels ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn jpanel
-  [draw-fn props-atom]
+  [draw-fn props-atom image-atom]
   (let [panel (proxy [javax.swing.JPanel] []
                 (paint [^java.awt.Graphics2D graphics]
                   (let [width (proxy-super getWidth)
                         height (proxy-super getHeight)]
-                    (draw-fn graphics width height props-atom))))]
-    [panel props-atom]))
+                    (draw-fn graphics width height props-atom image-atom))))]
+    [panel props-atom image-atom]))
 
 (def panels
   {:coverage draw-coverage})
@@ -77,20 +88,26 @@
 (defn build-panel
   [k & props]
   (let [draw-fn (get panels k)
-        props-atom (atom (apply hash-map props))]
-    (jpanel draw-fn props-atom)))
+        props-atom (atom (apply hash-map props))
+        image-atom (atom nil)]
+    (jpanel draw-fn props-atom image-atom)))
 
 (defn show-panel!
-  [[panel props & opts]]
-  (let [defaults {:title "satellite-clj" :width 1000 :height 500}
+  [[panel props image & opts]]
+  (let [defaults {:title "satellite-clj" :width 1000 :height 500 :on-top? false}
         properties (merge defaults (apply hash-map opts))]
     (doto (javax.swing.JFrame.)
       (.setDefaultCloseOperation javax.swing.JFrame/DISPOSE_ON_CLOSE)
       (.setTitle (:title properties))
+      (.setAlwaysOnTop (:on-top? properties))
       (.setSize (:width properties) (:height properties))
       (.setContentPane panel) (.setLocationRelativeTo nil) .show)))
 
 ;; DEBUG ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn rand-loc []
-  [(- (* (rand) 180) 90) (- (* (rand) 360) 180) (+ (* (rand) 4000) 400)])
+(defn rand-locs
+  [n]
+  (let [rl (fn [] [(- (* (rand) 180) 90)
+                   (- (* (rand) 360) 180)
+                   (+ (* (rand) 4000) 400)])]
+    (repeatedly n #(rl))))

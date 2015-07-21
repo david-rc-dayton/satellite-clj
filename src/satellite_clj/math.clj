@@ -167,8 +167,9 @@
      (norm-matrix [[5 10 5] [10 0 5]])
      ;=> [[0.5 1.0 0.5] [1.0 0.0 0.5]]"
   [m]
-  (let [max-m (reduce max (map #(reduce max %) m))]
-    (vec (map vec (for [row m] (map #(double (/ % max-m)) row))))))
+  (try (let [max-m (reduce max (map #(reduce max %) m))]
+         (vec (map vec (for [row m] (map #(double (/ % max-m)) row)))))
+    (catch Exception _ m)))
 
 (defn ms-mult
   "Multiply a matrix by a scalar value.
