@@ -40,7 +40,7 @@
   [a x]
   (.getRGB ^java.awt.Color (hsva->rgba (* x 240) 1 1 a)))
 
-;; JPanel  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Graphics ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn merge-images
   "Scale and merge images onto a given canvas"
@@ -136,5 +136,5 @@
   [n]
   (let [rl (fn [] [(- (* (rand) 180) 90)
                    (- (* (rand) 360) 180)
-                   (+ (* (rand) 4000) 400)])]
+                   (+ (* (rand) 40000) 400)])]
     (repeatedly n #(rl))))
