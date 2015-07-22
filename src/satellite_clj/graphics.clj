@@ -1,20 +1,50 @@
 (ns satellite-clj.graphics
   (:require [satellite-clj.coverage :refer [coverage-matrix]]
-            [satellite-clj.math :refer [norm-matrix]]))
+            [satellite-clj.math :refer [mm-add norm-matrix]]
+            [satellite-clj.surface :refer [elevation]]))
 
 ;; Images ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def images
+  "Default images for use in graphics panels. Options are:
+
+     :light - equirectangular map projection containing country outlines
+     :dark - equirectangular map projection containing countries (filled in)"
   {:light   "equirect_light.png"
    :dark    "equirect_dark.png"})
 
-(defn coverage-image
-  [k]
-  (let [img (get images k)]
-    (javax.imageio.ImageIO/read (clojure.java.io/file "resources" img))))
+(defn background-image
+  "Load a background image using a keyword to load a default image (see
+   satellite-clj.graphics/images), or a string containing the file-path to
+   the desired image.
+
+   Example:
+     (background-image :dark)
+       ;=> BufferedImage@...
+     (background-image \"C:\\\\User\\\\Pictures\\\\image.png\")
+       ;=> BufferedImage@... (on Windows)
+     (background-image \"/home/user/pictures/image.png\")
+       ;=> BufferedImage@... (on Linux)"
+  [selection]
+  (let [img (get images selection)]
+    (if (nil? img)
+      (javax.imageio.ImageIO/read (clojure.java.io/file selection))
+      (javax.imageio.ImageIO/read (clojure.java.io/resource img)))))
 
 (defn save-image!
-  "Save a panel as an image."
+  "Save a panel as a PNG image. The panel must be visible when save-image! is
+  executed (see satellite-clj.graphics/show-panel!). Optionally takes a File
+  argument as an output location, default output location is in the user's
+  home directory.
+
+  Example:
+    (def coverage-panel (build-panel :coverage))
+    (show-panel! coverage-panel)
+
+    (save-image! coverage-panel)
+      ;=> <output PNG to home directory>
+    (save-image! coverage-panel \"C:\\\\User\\\\Pictures\\\\image.png\")
+      ;=> <output PNG, named image.png, to Pictures directory>"
   ([[panel props-atom image-atom]]
     (let [path (System/getProperty "user.home")
           name (format "img_%06x.png" (rand-int (Math/pow 2 24)))]
@@ -58,6 +88,16 @@
 
 ;; Graphics ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn create-overlay
+  [matrix alpha]
+  (let [width (count (first matrix))
+        height (count matrix)
+        overlay (java.awt.image.BufferedImage.
+                  width height java.awt.image.BufferedImage/TYPE_4BYTE_ABGR)]
+    (doseq [y (range height) x (range width)]
+      (.setRGB overlay x y (val->rgba alpha (get-in matrix [y x]))))
+    overlay))
+
 (defn merge-images
   "Scale and merge images onto a given canvas"
   [graphics width height images]
@@ -78,26 +118,57 @@
 
 (defn coverage-overlay
   "Update overlay image for coverage panel."
-  [graphics width height properties]
-  (let [res (:resolution properties)
-        locs (:locations properties)
-        alpha (:alpha properties)
-        ovr-img (java.awt.image.BufferedImage.
-                  (* 2 res) res java.awt.image.BufferedImage/TYPE_4BYTE_ABGR)
-        c-mat (norm-matrix (coverage-matrix res locs))]
-    (doseq [y (range (count c-mat)) x (range (count (first c-mat)))]
-      (.setRGB ovr-img x y (val->rgba alpha (get-in c-mat [y x]))))
-    ovr-img))
+  [graphics properties]
+  (let [w (* 2 (:resolution properties))
+        h (:resolution properties)
+        a (:alpha properties)
+        c-mat (norm-matrix (coverage-matrix h (:locations properties)))]
+    (create-overlay c-mat a)))
 
 (defn draw-coverage
   [graphics width height props-atom image-atom]
   (let [defaults {:alpha 0.6 :locations [] :resolution 180 :image :light}
         properties (merge defaults @props-atom)
-        cov-img (coverage-image (:image properties))]
+        cov-img (background-image (:image properties))]
     (when (nil? @image-atom)
-      (reset! image-atom (coverage-overlay graphics width height properties)))
+      (reset! image-atom (coverage-overlay graphics properties)))
     (.clearRect ^java.awt.Graphics2D graphics 0 0 width height)
     (merge-images graphics width height [cov-img @image-atom])))
+
+;; Visibility ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn visibility-matrix
+  [resolution minimum-elevation ground altitude]
+  (let [lat-scale #(+ (* % (/ 180 (- (int resolution)))) 90)
+        lon-scale #(- (* % (/ 360 (* 2 (int resolution)))) 180)
+        lats (map lat-scale (range resolution))
+        lons (map lon-scale (range (* 2 resolution)))
+        vis-fn (fn [p] (if (>= (elevation ground p) minimum-elevation) 1 0))]
+    (for [lat lats] (map #(vis-fn [lat % altitude]) lons))))
+
+(defn visibility-overlay
+  "Update overlay image for visibility panel."
+  [graphics properties]
+  (let [max-alt 36000
+        res (:resolution properties)
+        min-el (:minimum-elevation properties)
+        loc (:location properties)
+        alpha (:alpha properties)
+        steps (range 0 max-alt (/ max-alt (:steps properties)))
+        mats (map #(visibility-matrix res min-el loc %) steps)
+        v-mat (norm-matrix (reduce mm-add mats))]
+    (create-overlay v-mat alpha)))
+
+(defn draw-visibility
+  [graphics width height props-atom image-atom]
+  (let [defaults {:alpha 0.6 :location [0 0 0] :minimum-elevation 0 :steps 72
+                  :resolution 180 :image :light}
+        properties (merge defaults @props-atom)
+        vis-img (background-image (:image properties))]
+    (when (nil? @image-atom)
+      (reset! image-atom (visibility-overlay graphics properties)))
+    (.clearRect ^java.awt.Graphics2D graphics 0 0 width height)
+    (merge-images graphics width height [vis-img @image-atom])))
 
 ;; Panels ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -127,7 +198,8 @@
     [panel props-atom image-atom]))
 
 (def panels
-  {:coverage draw-coverage})
+  {:coverage draw-coverage
+   :visibility draw-visibility})
 
 (defn build-panel
   [k & props]
@@ -154,5 +226,5 @@
   [n]
   (let [rl (fn [] [(- (* (rand) 180) 90)
                    (- (* (rand) 360) 180)
-                   (+ (* (rand) 40000) 400)])]
+                   (+ (* (rand) 4000) 400)])]
     (repeatedly n #(rl))))

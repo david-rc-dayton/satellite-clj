@@ -190,6 +190,15 @@
   (for [row m]
     (dot row v)))
 
+(defn mm-add
+  "Add two matrices together.
+
+  Example:
+    (mm-add [[1 2] [3 4]] [[5 6] [7 8]])
+      ;=> ((6 8) (10 12))"
+  [a b]
+  (map #(map + %1 %2) a b))
+
 ;;;; Quaternion Ops ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn q-product
