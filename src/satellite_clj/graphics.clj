@@ -13,6 +13,22 @@
   (let [img (get images k)]
     (javax.imageio.ImageIO/read (clojure.java.io/file "resources" img))))
 
+(defn save-image!
+  "Save a panel as an image."
+  ([[panel props-atom image-atom]]
+    (let [path (System/getProperty "user.home")
+          name (format "img_%06x.png" (rand-int (Math/pow 2 24)))]
+      (save-image! [panel props-atom image-atom]
+                   (clojure.java.io/file path name))))
+  ([[panel props-atom image-atom] output-file]
+    (let [w (.getWidth panel)
+          h (.getHeight panel)
+          out-image (java.awt.image.BufferedImage.
+                      w h java.awt.image.BufferedImage/TYPE_INT_ARGB)
+          image-graphics (.createGraphics out-image)]
+      (.paint panel image-graphics)
+      (javax.imageio.ImageIO/write out-image "png" output-file))))
+
 ;; Color Mapping ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn hsva->rgba
@@ -45,8 +61,10 @@
 (defn merge-images
   "Scale and merge images onto a given canvas"
   [graphics width height images]
+  (.setColor graphics java.awt.Color/WHITE)
+  (.fillRect graphics 0 0 width height)
   (doseq [img images]
-    (.drawImage ^java.awt.Graphics2D graphics img 0 0 width height nil nil)))
+    (.drawImage ^java.awt.Graphics2D graphics img 0 0 width height nil)))
 
 (defn update-panel!
   "Update a panel's properties with new arguments."
