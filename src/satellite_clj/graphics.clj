@@ -10,8 +10,8 @@
 
      :light - equirectangular map projection containing country outlines
      :dark - equirectangular map projection containing countries (filled in)"
-  {:light   "equirect_light.png"
-   :dark    "equirect_dark.png"})
+  {:light "equirect_light.png"
+   :dark  "equirect_dark.png"})
 
 (defn background-image
   "Load a background image using a keyword to load a default image (see
@@ -127,7 +127,7 @@
 
 (defn draw-coverage
   [graphics width height props-atom image-atom]
-  (let [defaults {:alpha 0.6 :locations [] :resolution 180 :image :light}
+  (let [defaults {:alpha 0.6 :locations [] :resolution 180 :image :dark}
         properties (merge defaults @props-atom)
         cov-img (background-image (:image properties))]
     (when (nil? @image-atom)
@@ -162,7 +162,7 @@
 (defn draw-visibility
   [graphics width height props-atom image-atom]
   (let [defaults {:alpha 0.6 :location [0 0 0] :minimum-elevation 0 :steps 72
-                  :resolution 180 :image :light}
+                  :resolution 180 :image :dark}
         properties (merge defaults @props-atom)
         vis-img (background-image (:image properties))]
     (when (nil? @image-atom)
